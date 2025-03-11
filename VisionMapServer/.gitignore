@@ -1,0 +1,57 @@
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Dd]Release/
+[Dd]ReleasePublic/
+x64/
+x86/
+arm/
+arm64/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# User-specific config
+.vsconfig
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Debugging files
+*.log
+
+# IntelliSense files
+.vs/
+
+# .NET Core files (if applicable)
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# CMake files (if applicable)
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+install/
+
+# VS Code settings (if applicable)
+.vscode/
+
+# JetBrains Rider (if applicable)
+.idea/
+
+# Dependency directories
+node_modules/
+npm-debug.log

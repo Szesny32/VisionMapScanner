@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using UnityEngine;
+using System;
 
 public class StereovisionCapture : MonoBehaviour {
     private UdpClient udpClient;
@@ -31,28 +32,26 @@ public class StereovisionCapture : MonoBehaviour {
         udpClient.Send(combinedPacket, combinedPacket.Length, host, port);
     }
 
-    byte[] GetCameraFrame(Camera cam, string camID) {
-        cam.targetTexture = renderTexture;
-        cam.Render();
-        RenderTexture.active = renderTexture;
-        texture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        texture.Apply();
+byte[] GetCameraFrame(Camera cam, string camID) {
+    cam.targetTexture = renderTexture;
+    cam.Render();
+    RenderTexture.active = renderTexture;
+    texture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+    texture.Apply();
 
-        byte[] imageBytes = texture.EncodeToJPG();
-        byte[] headerBytes = System.Text.Encoding.UTF8.GetBytes(camID + ":");
-        byte[] packet = new byte[headerBytes.Length + imageBytes.Length];
-        System.Buffer.BlockCopy(headerBytes, 0, packet, 0, headerBytes.Length);
-        System.Buffer.BlockCopy(imageBytes, 0, packet, headerBytes.Length, imageBytes.Length);
+    byte[] imageBytes = texture.EncodeToJPG();
 
-        cam.targetTexture = null;
-        RenderTexture.active = null;
-        return packet;
-    } 
+    cam.targetTexture = null;
+    RenderTexture.active = null;
+    return imageBytes;
+}
 
     byte[] CombineImages(byte[] cam1ImageBytes, byte[] cam2ImageBytes) {
-        byte[] combined = new byte[cam1ImageBytes.Length + cam2ImageBytes.Length];
-        System.Buffer.BlockCopy(cam1ImageBytes, 0, combined, 0, cam1ImageBytes.Length);
-        System.Buffer.BlockCopy(cam2ImageBytes, 0, combined, cam1ImageBytes.Length, cam2ImageBytes.Length);
+        byte[] combined = new byte[8 + cam1ImageBytes.Length + cam2ImageBytes.Length];
+        Buffer.BlockCopy(BitConverter.GetBytes(cam1ImageBytes.Length), 0, combined, 0, 4);
+        Buffer.BlockCopy(BitConverter.GetBytes(cam2ImageBytes.Length), 0, combined, 4, 4);
+        Buffer.BlockCopy(cam1ImageBytes, 0, combined, 8, cam1ImageBytes.Length);
+        Buffer.BlockCopy(cam2ImageBytes, 0, combined, 8 + cam1ImageBytes.Length, cam2ImageBytes.Length);
         return combined;
     }
 

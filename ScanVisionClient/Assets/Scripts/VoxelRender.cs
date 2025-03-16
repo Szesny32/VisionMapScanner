@@ -4,9 +4,9 @@ using UnityEngine;
 public class VoxelRender : MonoBehaviour {
     ParticleSystem system;
     ParticleSystem.Particle[] voxels;
-    bool voxelsUpdated = false;
-    public float voxelScale = 0.1f;
-    public float scale = 1f;
+     bool voxelsUpdated = false;
+    private float voxelScale = 0.01f;
+    private float scale = 1f;
 
     void Start() => system = GetComponent<ParticleSystem>();
  
@@ -17,7 +17,7 @@ public class VoxelRender : MonoBehaviour {
         }
     }
     
-    public void SetVoxels(Vector3[] positions, Color[] colors) {
+    public void SetVoxels(Vector3[] positions, Color[] colors, float voxelScale) {
         voxels = new ParticleSystem.Particle[positions.Length];
         for(int i = 0; i < positions.Length; i++){
             voxels[i].position = positions[i] *scale;

@@ -18,11 +18,16 @@ public class DepthCamera: MonoBehaviour
         width = (int)viewport.rectTransform.rect.width;
         height = (int)viewport.rectTransform.rect.height;
         depthCamera = GetComponent<Camera>();
+        //depthCamera.aspect = (float)width / height;
+        depthCamera.rect = new Rect(0, 0, width, height);
         depthCamera.targetTexture = new RenderTexture(width, height, 24, RenderTextureFormat.Depth);
         depthCamera.depthTextureMode = DepthTextureMode.Depth;
 
-        depthMapRT = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB32);
+        depthMapRT = new RenderTexture(width, height, 24, RenderTextureFormat.RFloat);
         depthMap = new Texture2D(width, height, TextureFormat.RFloat, false);
+
+    
+        Debug.Log($"{width} x {height}");
     }
 
     void Update() => RenderDepthMap();

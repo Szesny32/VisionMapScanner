@@ -27,5 +27,16 @@ public class VoxelRender : MonoBehaviour {
         Debug.Log("Voxels set! Voxel count: " + voxels.Length);
         voxelsUpdated = true;
     }
+
+        public void SetVoxels(Vector3[] positions,float voxelScale) {
+        voxels = new ParticleSystem.Particle[positions.Length];
+        for(int i = 0; i < positions.Length; i++){
+            voxels[i].position = positions[i] *scale;
+            voxels[i].startColor = Random.ColorHSV();
+            voxels[i].startSize = voxelScale;
+        }
+        Debug.Log("Voxels set! Voxel count: " + voxels.Length);
+        voxelsUpdated = true;
+    }
     
 }

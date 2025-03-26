@@ -7,154 +7,108 @@ public class MapReconstructor : MonoBehaviour
 {
     public VoxelRender voxelRender;
     public VoxelRender scanVoxelRender;
+   
+    private Octree octree;
     public float zScan = 0f;
     
-    private string filePath = "DepthMap.png";
-    private Texture2D heightMap;
-    int width, height;
+    private string defaultDepthMapPath = "DepthMap.png";
+    private Texture2D depthMap;
     public float xScale = 1f, yScale = 1f, zScale =1f;
-    public float f;
-    float  fx, fy, cx, cy;
-    float fov;
-    float aspectRatio;
+
+
+    public DepthCamera depthCam;
+    private CameraCalibration cameraCalibration;
+    private Transform cameraTransform;
+
+
 
     [Range(0,1)] public float maxDepth = 1f;
 
+    public bool fromDepthCamera = false;
+
     public RawImage viewport;
 
-     public bool voxelsUpdated = false;
-    void OnEnable(){
-        byte[] fileData = File.ReadAllBytes(filePath);
-        heightMap = new Texture2D(2, 2);
-        heightMap.LoadImage(fileData);
-        viewport.texture = heightMap;
-
-        width = heightMap.width;
-        height = heightMap.height;
-        aspectRatio =  (float)width / height;
+    public bool voxelsUpdated = false;
 
 
+    private Vector3 chunkPosition;
+    public int resolution = 8;
 
-        fov = 60;
-        
+    private byte[] RetrieveDepthCameraData(DepthCamera depthCam){
+        return depthCam != null? 
+            depthCam.RetrieveData(ref cameraTransform) : 
+            File.ReadAllBytes(defaultDepthMapPath);
+    }
+    
+    void Start(){
+        depthMap = new Texture2D(2, 2);
+        chunkPosition = new Vector3(0.5f, 0.5f, 0.5f);
+        octree = new Octree(chunkPosition, resolution);
+        viewport.texture = depthMap;
 
-        float fovY = fov;
-        float fovY_rad = Mathf.Deg2Rad * fovY;
-        float fovX_rad = 2f * Mathf.Atan(aspectRatio * Mathf.Tan(fovY_rad / 2f));
-
-        fx = width / (2f * Mathf.Tan(fovX_rad * 0.5f));
-        fy = height / (2f * Mathf.Tan(fovY_rad * 0.5f));
-
-
-        cx = width/2f; 
-        cy = height/2f; 
-
-        
-
-        DebugCamParam();
-
+        if(depthCam!=null) cameraCalibration = depthCam.GetCalibrationData();
     }
 
-    void DebugCamParam(){
-        string log = $"FOV: {fov}\n";
-        log += $"resolution: {width}px x {height}px\n";
-        log += $"aspectRatio: {aspectRatio}\n";
-        log += $"f: {f}\n";
-        log += $"fx: {fx}\n";
-        log += $"fy: {fy}\n";
-        log += $"cx: {cx}\n";
-        log += $"cy: {cy}\n";
-        Debug.Log(log);
-    }
+    
 
-     void Start() {
-        Camera.main.clearFlags = CameraClearFlags.SolidColor; 
-        Camera.main.backgroundColor = Color.black;
 
-        (List<Vector3>vertices , List<Color> colors) = GenerateVoxels();
-        voxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), 0.05f);
-     }
-     void Update(){
-        Debug.DrawRay(transform.position, Vector3.forward, Color.red);
 
-        if(voxelsUpdated){
-            (List<Vector3>vertices , List<Color> colors) = GenerateVoxels();
-            voxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), 0.05f);
-            voxelsUpdated = false;
+
+    void Update(){
+        
+        if(depthCam==null) return;
+        
+        UpdateDepthMap();
+        UpdateOctree();
+
+        //TODO: check if updated
+        if(Time.frameCount % 10 == 0){
+            (List<Vector3>vertices , List<Color> colors, List<float> sizes) = octree.GetColoredLeafPositions();
+            voxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), sizes.ToArray());
         }
 
-       //if(Time.frameCount % 2 == 0)
-        scan();
-     }
+        Debug.DrawRay(new Vector3(0,0,0), Vector3.forward, Color.red);
+        Debug.DrawRay(new Vector3(0,0,1),Vector3.right, Color.red);
+        Debug.DrawRay(new Vector3(1,0,1), Vector3.back, Color.red);
+        Debug.DrawRay(new Vector3(1,0,0), Vector3.left, Color.red);
+
+        Debug.DrawRay(new Vector3(0,1,0), Vector3.forward, Color.red);
+        Debug.DrawRay(new Vector3(0,1,1),Vector3.right, Color.red);
+        Debug.DrawRay(new Vector3(1,1,1), Vector3.back, Color.red);
+        Debug.DrawRay(new Vector3(1,1,0), Vector3.left, Color.red);
+
+        Debug.DrawRay(new Vector3(0,0,0), Vector3.up, Color.red);
+        Debug.DrawRay(new Vector3(0,0,1),Vector3.up, Color.red);
+        Debug.DrawRay(new Vector3(1,0,1), Vector3.up, Color.red);
+        Debug.DrawRay(new Vector3(1,0,0), Vector3.up, Color.red);
 
 
-    (List<Vector3>, List<Color>) GenerateVoxels(){
-        List<Vector3> vertices = new List<Vector3>();
-        List<Color> colors = new List<Color>();
+    }
 
-        vertices.Add(new Vector3(-5  , 0  , 0));
-        colors.Add(new Color(0, 0, 1));
-        vertices.Add(new Vector3(5  , 0  , 0));
-        colors.Add(new Color(0, 0, 1));
-        // for (float z = 0; z <= 1.0f; z+=0.01f){
+    
+    private void UpdateDepthMap(){
+        byte[] dataBuffer = RetrieveDepthCameraData(depthCam);
+        depthMap.LoadImage(dataBuffer);
+    }
+    private void UpdateOctree(){
 
-        //     float depth = LinearDepth(z, 0.3f, 1000f);
-        //     (float x, float y) = toOrthogonal(0, 0, depth);
-        //     vertices.Add(new Vector3( x , y  , depth));
-        //     colors.Add(new Color(0, 1, 0));
-
-        //     (x,  y) = toOrthogonal(0, height-1, depth);
-        //     vertices.Add(new Vector3( x , y  , depth));
-        //     colors.Add(new Color(0, 1, 0));
-
-        //     (x,  y) = toOrthogonal(width-1, height-1, depth);
-        //     vertices.Add(new Vector3( x , y  , depth));
-        //     colors.Add(new Color(0, 1, 0));
-
-
-
-        //     (x,  y) = toOrthogonal(width-1, 0, depth);
-        //     vertices.Add(new Vector3( x , y  , depth));
-        //     colors.Add(new Color(0, 1, 0));
-
-        // }
-
-        // int dy = height / 10;
-        // int dx = width / 10;
-
-        // for (int y = 0; y < height; y+=dy){
-        //     for (int x = 0; x < width; x+=dx){
-        //         float depth = LinearDepth(0.5f, 0.3f, 1000f);
-        //         (float oX, float oY) = toOrthogonal(x, y, depth);
-        //         vertices.Add(new Vector3( oX, oY, depth));
-        //         colors.Add(new Color(0, 1, 0));
-        //     }
-        // }
-
-        // for (int y = 0; y < height; y+=dy){
-        //     for (int x = 0; x < width; x+=dx){
-        //         float depth = LinearDepth(0.75f, 0.3f, 1000f);
-        //         (float oX, float oY) = toOrthogonal(x, y, depth);
-        //         vertices.Add(new Vector3( oX, oY, depth));
-        //         colors.Add(new Color(0, 1, 0));
-        //     }
-        // }
-
-        for (int y = 0; y < height; y++){
-            for (int x = 0; x < width; x++){
-                Color pixel = heightMap.GetPixel(x, y);
+        for (int y = 0; y < cameraCalibration.height; y++){
+            for (int x = 0; x < cameraCalibration.width; x++){
+                Color pixel = depthMap.GetPixel(x, y);
                 float depthNDC = 1f - pixel.grayscale;
                 if(depthNDC <=maxDepth){
                     float z = LinearDepth(depthNDC, 0.3f, 1000f);
                     (float oX, float oY) = toOrthogonal(x, y, z);
-                    vertices.Add(new Vector3(oX * xScale  , oY * yScale  , z * zScale));
-                    colors.Add(new Color(pixel.r, 0, 0));
-
+                    
+                    Vector3 worldPosition = fromDepthCamera?
+                    cameraTransform.position+cameraTransform.rotation * new Vector3(oX * xScale, oY * yScale, z * zScale)
+                    : new Vector3(oX * xScale, oY * yScale, z * zScale);
+                    octree.Insert(worldPosition);
                 }
             }
         }
-        return (vertices, colors);
     }
+
 
     float LinearDepth(float depth, float near, float far)
     {
@@ -163,33 +117,31 @@ public class MapReconstructor : MonoBehaviour
 
     (float, float) toOrthogonal(float u, float v, float Z){
 
-        float X = (float)(u - cx) * (Z/ fx);
-        float Y = (float)(v - cy) * (Z / fy);
+        float X = (float)(u - cameraCalibration.cx) * (Z / cameraCalibration.fx);
+        float Y = (float)(v - cameraCalibration.cy) * (Z / cameraCalibration.fy);
         return (X, Y);
     }
 
-    void scan(){
-        List<Vector3> vertices = new List<Vector3>();
-        List<Color> colors = new List<Color>();
+
+    // void scan(){
+    //     List<Vector3> vertices = new List<Vector3>();
+    //     List<Color> colors = new List<Color>();
   
-        int dy = height / 10;
-        int dx = width / 10;
+    //     int dy = height / 10;
+    //     int dx = width / 10;
 
-        for (int y = 0; y < height; y+=dy){
-            for (int x = 0; x < width; x+=dx){
-                float depth = LinearDepth(zScan, 0.3f, 1000f);
-                (float oX, float oY) = toOrthogonal(x, y, depth);
-                vertices.Add(new Vector3( oX, oY, depth));
-                colors.Add(new Color(0, 1, 0));
-            }
-        }
+    //     for (int y = 0; y < height; y+=dy){
+    //         for (int x = 0; x < width; x+=dx){
+    //             float depth = LinearDepth(zScan, 0.3f, 1000f);
+    //             (float oX, float oY) = toOrthogonal(x, y, depth);
+    //             vertices.Add(new Vector3( oX, oY, depth));
+    //             colors.Add(new Color(0, 1, 0));
+    //         }
+    //     }
 
-        scanVoxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), 0.02f);
-        zScan = (zScan +0.01f)%maxDepth;
-    }
+    //     scanVoxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), 0.02f);
+    //     zScan = (zScan +0.01f)%maxDepth;
+    // }
 
-
-
-    
 
 }

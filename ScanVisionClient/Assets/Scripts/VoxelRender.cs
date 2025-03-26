@@ -24,19 +24,31 @@ public class VoxelRender : MonoBehaviour {
             voxels[i].startColor = colors[i];
             voxels[i].startSize = voxelScale;
         }
-        Debug.Log("Voxels set! Voxel count: " + voxels.Length);
+        //Debug.Log("Voxels set! Voxel count: " + voxels.Length);
         voxelsUpdated = true;
     }
 
-        public void SetVoxels(Vector3[] positions,float voxelScale) {
+        public void SetVoxels(Vector3[] positions, float[] sizes) {
         voxels = new ParticleSystem.Particle[positions.Length];
         for(int i = 0; i < positions.Length; i++){
             voxels[i].position = positions[i] *scale;
-            voxels[i].startColor = Random.ColorHSV();
-            voxels[i].startSize = voxelScale;
+            voxels[i].startColor = new Color(1f- (float)i/positions.Length, 0, (float)i/positions.Length);
+            voxels[i].startSize = sizes[i];
         }
         Debug.Log("Voxels set! Voxel count: " + voxels.Length);
         voxelsUpdated = true;
     }
+
+    public void SetVoxels(Vector3[] positions, Color[] color, float[] sizes) {
+        voxels = new ParticleSystem.Particle[positions.Length];
+        for(int i = 0; i < positions.Length; i++){
+            voxels[i].position = positions[i] *scale;
+            voxels[i].startColor = color[i];
+            voxels[i].startSize = sizes[i];
+        }
+        Debug.Log("Voxels set! Voxel count: " + voxels.Length);
+        voxelsUpdated = true;
+    }
+
     
 }

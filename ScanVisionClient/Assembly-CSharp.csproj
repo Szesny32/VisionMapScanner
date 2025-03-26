@@ -71,6 +71,7 @@
     <Compile Include="Assets\Scripts\Octree.cs" />
     <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
     <Compile Include="Assets\Scripts\VoxelRender.cs" />
+    <Compile Include="Assets\Scripts\CameraController.cs" />
     <Compile Include="Assets\Scripts\OctreeManager.cs" />
   </ItemGroup>
   <ItemGroup>

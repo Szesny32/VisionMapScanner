@@ -7,7 +7,7 @@ public class OctreeManager : MonoBehaviour
     public VoxelRender voxelRender;
     float x , y,  z;
     Queue<Vector3> queue;
-    int depth = 4;
+    int depth = 3;
     void Start()
     {
         queue =  new Queue<Vector3>();

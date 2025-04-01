@@ -1,7 +1,9 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <opencv2/calib3d.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 #include <winsock2.h>
-#include <vector>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -63,8 +65,8 @@ int main() {
         int cam1ImageLength = *reinterpret_cast<int*>(buffer); 
         int cam2ImageLength = *reinterpret_cast<int*>(buffer + 4);
 
-        //std::cerr << "CAM1 image length: " << cam1ImageLength << std::endl;
-       // std::cerr << "CAM2 image length: " << cam2ImageLength << std::endl;
+        std::cerr << "CAM1 image length: " << cam1ImageLength << std::endl;
+        std::cerr << "CAM2 image length: " << cam2ImageLength << std::endl;
 
         if (bytesReceived < 8 + cam1ImageLength + cam2ImageLength) {
             std::cerr << "Incomplete image data!" << std::endl;
@@ -97,10 +99,25 @@ int main() {
         cv::resize(cam1Image, cam1Image, cv::Size(108, 72));
         cv::resize(cam2Image, cam2Image, cv::Size(108, 72));
 
-        cv::Mat combinedImage;
-        cv::hconcat(cam1Image, cam2Image, combinedImage);
 
-        cv::imshow("Stereovision", combinedImage);
+       //cv::Mat combinedImage;
+       //cv::hconcat(cam1Image, cam2Image, combinedImage);
+       //cv::imshow("Stereovision", combinedImage);
+
+
+        cv::Mat cam1Gray, cam2Gray;
+        cv::cvtColor(cam1Image, cam1Gray, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(cam2Image, cam2Gray, cv::COLOR_BGR2GRAY);
+
+        cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create(16, 15);
+        cv::Mat disparity;
+        stereo->compute(cam1Gray, cam2Gray, disparity);
+
+        cv::Mat disparityNorm;
+        cv::normalize(disparity, disparityNorm, 0, 255, cv::NORM_MINMAX, CV_8U);
+
+        cv::imshow("Disparity Map", disparityNorm);
+
 
         if (cv::waitKey(1) == 27) {
             break;

@@ -64,7 +64,7 @@ public class MapReconstructor : MonoBehaviour
         //TODO: check if updated
         if(Time.frameCount % 10 == 0){
             (List<Vector3>vertices , List<Color> colors, List<float> sizes) = octree.GetColoredLeafPositions();
-            voxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), sizes.ToArray());
+           // voxelRender.SetVoxels(vertices.ToArray(), colors.ToArray(), sizes.ToArray());
         }
 
         Debug.DrawRay(new Vector3(0,0,0), Vector3.forward, Color.red);

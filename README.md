@@ -19,4 +19,4 @@ The functionality will be enabled when the higher layers becomes fully operation
 
 ## Step 5: Chunking Scene Reconstruction System
 ![ezgif-52a6e0a74a24d6](https://github.com/user-attachments/assets/5f08780c-bbda-4bc4-bcf9-fe92528fa6ac)
-* The current phase still needs to be adjusted (the central chunk problem and the optimization problem)
+* The current phase still needs to be adjusted (scaling, central chunk problem and the optimization problem)

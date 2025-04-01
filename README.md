@@ -17,3 +17,6 @@ The functionality will be enabled when the higher layers becomes fully operation
 ![3d_reconstruction](https://github.com/user-attachments/assets/f7198e6c-7c56-439f-b1c0-57baae892e46)
 * The current result operates only on one chunk (1x1x1) - the rest is truncated. 
 
+## Step 5: Chunking Scene Reconstruction System
+![ezgif-52a6e0a74a24d6](https://github.com/user-attachments/assets/5f08780c-bbda-4bc4-bcf9-fe92528fa6ac)
+* The current phase still needs to be adjusted (the central chunk problem and the optimization problem)

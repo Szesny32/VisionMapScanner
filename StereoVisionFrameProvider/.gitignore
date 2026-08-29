@@ -38,3 +38,4 @@ Builds/
 *.pidb
 
 Assets/ExternalAssets*
+Assets/Scenes/External*

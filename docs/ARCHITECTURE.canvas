@@ -1,0 +1,23 @@
+{
+	"nodes":[
+		{"id":"a1b2c3d4e5f6g701","type":"group","x":-500,"y":-500,"width":1050,"height":1200,"label":"Unity: StereoVisionFrameProvider"},
+		{"id":"b1c2d3e4f5g6h701","type":"group","x":800,"y":-40,"width":1660,"height":540,"label":"ROS2: VisualSLAM Environment"},
+		{"id":"b1c2d3e4f5g6h704","type":"group","x":1540,"y":23,"width":850,"height":422,"label":"Node: StereoProcessorNode (Python)"},
+		{"id":"a1b2c3d4e5f6g703","type":"group","x":25,"y":-280,"width":480,"height":543,"label":"class: StereovisionCaptureROS2"},
+		{"id":"a1b2c3d4e5f6g702","type":"text","text":"# Unity Synthetic Data Provider\nGenerates ground truth stereo frames, depth maps, and positional data. Launches ROS2 integration scripts on startup.","x":-460,"y":-440,"width":950,"height":100},
+		{"id":"a1b2c3d4e5f6g704","type":"text","text":"**ROS Topics:**\n- `/stereo/camera_left` (ImageMsg)\n- `/stereo/camera_right` (ImageMsg)\n- `/stereo/left/camera_info` (CameraInfoMsg)\n- `/stereo/right/camera_info` (CameraInfoMsg)\n- `/robot/pose` (PoseStampedMsg)\n\n**Core Methods:**\n- `Start()`: Inits ROS connection, configures UI, starts Shell processes.\n- `Update()`: Calls main publishing methods with shared timestamp.\n- `SendStereoVisionFrames()`: Renders and encodes JPG bytes.\n- `PublishCameraInfoAndRobotPose()`: Computes K/P matrices, focal length, and dynamic baseline.","x":45,"y":-230,"width":440,"height":464},
+		{"id":"a1b2c3d4e5f6g706","type":"text","text":"### Utilities & Config\n**Config.cs:**\n- Loads `config.json`.\n- Stores paths to ROS bash scripts.\n- Defines `globalLogLevel`.\n\n**FileManager.cs:**\n- `GetGitRootDirectory()`: Resolves root dir using `git rev-parse`.\n- Reads/Writes config files.\n\n**Logger.cs:**\n- Custom logger wrapper filtering by Info/Warning/Error/Debug.","x":-480,"y":-285,"width":440,"height":450},
+		{"id":"a1b2c3d4e5f6g705","type":"text","text":"### class: ShellManager\nSingleton managing background bash processes.\n- `Execute(scriptPath)`: Runs `/bin/bash` with script.\n- `KillProcessTree(pid)`: Uses `pgrep` to recursively close child processes.\n- `CloseAllProcesses()`: Executed on application quit.","x":45,"y":360,"width":440,"height":300},
+		{"id":"b1c2d3e4f5g6h702","type":"text","text":"### run_ros_tcp_endpoint.sh\nInitializes TCP bridge for Unity.\n- **IP**: 127.0.0.1\n- **Port**: 10000","x":820,"y":-12,"width":400,"height":185},
+		{"id":"b1c2d3e4f5g6h705","type":"text","text":"**Subscriptions:**\n- `/stereo/camera_left`, `/stereo/camera_right`\n- `/stereo/left/camera_info`, `/stereo/right/camera_info`\n\n**Core Logic (`try_process_stereo`):**\n1. **Synchronization**: Validates timestamps (`dt < 0.001s`).\n2. **Calibration Extraction**: Pulls `focal_length` and `baseline` from CameraInfo P matrix.\n3. **Stereo Matching**: Computes disparity using OpenCV `StereoSGBM`.\n4. **Filtering**: Applies `ximgproc.createDisparityWLSFilter` for smooth depth maps.\n5. **Depth Calculation**: `(focal_length * baseline) / disparity_float`.\n6. **Visualization**: Clips depth (0.1 - 10.0m) and displays using `cv2.imshow`.","x":1560,"y":56,"width":790,"height":366},
+		{"id":"b1c2d3e4f5g6h703","type":"text","text":"### run_stereo_processor_node.sh\nSets up ROS2 Jazzy/Workspace env variables and executes `stereo_processor_node.py`.","x":820,"y":220,"width":400,"height":140}
+	],
+	"edges":[
+		{"id":"e1f2g3h4i5j6k701","fromNode":"a1b2c3d4e5f6g705","fromSide":"right","toNode":"b1c2d3e4f5g6h702","toSide":"left","label":"Executes"},
+		{"id":"e1f2g3h4i5j6k702","fromNode":"a1b2c3d4e5f6g705","fromSide":"right","toNode":"b1c2d3e4f5g6h703","toSide":"left","label":"Executes"},
+		{"id":"e1f2g3h4i5j6k703","fromNode":"a1b2c3d4e5f6g703","fromSide":"right","toNode":"b1c2d3e4f5g6h702","toSide":"left","label":"TCP Traffic (Topics)"},
+		{"id":"e1f2g3h4i5j6k704","fromNode":"b1c2d3e4f5g6h703","fromSide":"right","toNode":"b1c2d3e4f5g6h704","toSide":"left"},
+		{"id":"e1f2g3h4i5j6k705","fromNode":"b1c2d3e4f5g6h702","fromSide":"right","toNode":"b1c2d3e4f5g6h704","toSide":"left","label":"Routes messages"},
+		{"id":"69070d1e8c542705","fromNode":"a1b2c3d4e5f6g703","fromSide":"bottom","toNode":"a1b2c3d4e5f6g705","toSide":"top","toEnd":"none"}
+	]
+}

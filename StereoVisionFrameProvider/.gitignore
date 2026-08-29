@@ -36,3 +36,5 @@ Builds/
 *.user
 *.userprefs
 *.pidb
+
+Assets/ExternalAssets*

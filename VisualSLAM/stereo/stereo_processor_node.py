@@ -12,12 +12,18 @@ class StereoProcessorNode(Node):
         self.sub_left = self.create_subscription(
             Image, '/stereo/camera_left', self.left_image_callback, 10)
         self.sub_right = self.create_subscription(
-            Image, '/stereo/camera_right', self.right_image_callback, 10)
+            Image, '/stereo/camera_right', self.right_image_callback, 10) 
+        self.sub_info_left = self.create_subscription(
+            CameraInfo, '/stereo/left/camera_info', self.info_left_callback, 10)
+        self.sub_info_right = self.create_subscription(
+            CameraInfo, '/stereo/right/camera_info', self.info_right_callback, 10)
         
         self.left_img = None
         self.right_img = None
         self.left_stamp = 0.0
         self.right_stamp = 0.0
+        self.focal_length = None
+        self.baseline = None
         
         min_disp = 0
         num_disp = 16 * 8  # 128
@@ -41,7 +47,15 @@ class StereoProcessorNode(Node):
         self.wls_filter.setLambda(8000.0)
         self.wls_filter.setSigmaColor(1.5)
         
-        self.get_logger().info('Advanced node with WLS filter launched.')
+        self.get_logger().info('Advanced node with WLS filter & Dynamic Depth Map launched.')
+
+    def info_left_callback(self, msg):
+        self.focal_length = msg.p[0]
+
+    def info_right_callback(self, msg):
+        if self.focal_length is not None and self.focal_length > 0:
+            tx = msg.p[3]
+            self.baseline = -tx / self.focal_length
 
     def left_image_callback(self, msg):
         img = self.msg_to_cv2(msg)
@@ -67,6 +81,8 @@ class StereoProcessorNode(Node):
     def try_process_stereo(self):
         if self.left_img is None or self.right_img is None:
             return
+        if self.focal_length is None or self.baseline is None:
+            return
 
         dt = abs(self.left_stamp - self.right_stamp)
         if dt > 0.001:
@@ -80,6 +96,7 @@ class StereoProcessorNode(Node):
         gray_left = cv2.cvtColor(left, cv2.COLOR_BGR2GRAY)
         gray_right = cv2.cvtColor(right, cv2.COLOR_BGR2GRAY)
 
+        # TODO: clahe
         # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         # gray_left = clahe.apply(gray_left)
         # gray_right = clahe.apply(gray_right)
@@ -91,13 +108,21 @@ class StereoProcessorNode(Node):
         
         disparity_float = filtered_disp.astype(np.float32) / 16.0
 
-        disp_visual = cv2.normalize(
-            disparity_float, None, alpha=0, beta=255,
-            norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U
-        )
+        with np.errstate(divide='ignore', invalid='ignore'):
+            depth_map = (self.focal_length * self.baseline) / disparity_float
+            depth_map[disparity_float <= 0.0] = 0
+
+        min_depth = 0.1   
+        max_depth = 10.0  
+
+        invalid_mask = (depth_map <= 0.0) | (depth_map > max_depth)
+        depth_clipped = np.clip(depth_map, min_depth, max_depth)
+        
+        depth_visual = (255.0 * (1.0 - (depth_clipped - min_depth) / (max_depth - min_depth))).astype(np.uint8)
+        depth_visual[invalid_mask] = 0
 
         cv2.imshow("Left Camera", left)
-        cv2.imshow("Disparity Map (WLS)", disp_visual)
+        cv2.imshow("Depth Map (Meters)", depth_visual)
         cv2.waitKey(1)
 
 def main(args=None):

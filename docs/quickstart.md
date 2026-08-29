@@ -19,7 +19,7 @@ chmod +x activate.sh
 ## 1. [Terminal-1]
 ```
 ./VisualSLAM/ros2/run_ros_tcp_endpoint.sh
-``
+```
 
 ## 2. Open & Run Unity project
 - [[StereoVision Scene]]

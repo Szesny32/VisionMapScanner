@@ -9,6 +9,7 @@ using RosMessageTypes.BuiltinInterfaces;
 
 public class StereovisionCaptureROS2 : MonoBehaviour
 {
+    Logger logger;
     private ROSConnection ros;
 
     [Header("Stereo Cameras")]
@@ -39,8 +40,19 @@ public class StereovisionCaptureROS2 : MonoBehaviour
     private Texture2D textureCAM1;
     private Texture2D textureCAM2;
 
+
+    private System.Diagnostics.Process rosTcpEndpointProcess;
+    private System.Diagnostics.Process stereoProcessorNodeProcess;
+
+    void OnApplicationQuit() {
+        if (ShellManager.Instance != null){
+            ShellManager.Instance.CloseAllProcesses();
+        }
+    }
+
     void Start()
     {
+        logger = new Logger(GetType().Name);
         ros = ROSConnection.GetOrCreateInstance();
         
         ros.RegisterPublisher<ImageMsg>(topicNameLeft);
@@ -65,16 +77,24 @@ public class StereovisionCaptureROS2 : MonoBehaviour
         cam2.enabled = false;
 
         if (cam1 == null || cam2 == null) {
-            Debug.LogWarning("[STEREO] One of the cameras is not assigned! Using default baseline.");
+            logger.Warn(AppLabels.CAMERA_NOT_ASSIGNED);
             return;
         } 
         baseline = Vector3.Distance(cam1.transform.position, cam2.transform.position);
-        Debug.Log($"[STEREO] Calculated baseline between cameras: {baseline:F4} m");
+        logger.Log(string.Format(AppLabels.BASELINE_CALCULATED, baseline));
+
+        if (string.IsNullOrEmpty(Config.Instance.RunRosTcpEndpointSh) || string.IsNullOrEmpty(Config.Instance.RunStereoProcessorNodeSh)) {
+            logger.Error(AppLabels.MISSING_ROS_SCRIPTS_PATH);
+            return;
+        }
+        
+        rosTcpEndpointProcess = ShellManager.Instance.Execute(Config.Instance.RunRosTcpEndpointSh);
+        stereoProcessorNodeProcess = ShellManager.Instance.Execute(Config.Instance.RunStereoProcessorNodeSh);
+        
     }
 
     void Update() {
         TimeMsg sharedTimestamp = GetCurrentROSTime();
-
         SendStereoVisionFrames(sharedTimestamp);
         PublishCameraInfoAndRobotPose(sharedTimestamp);
     }

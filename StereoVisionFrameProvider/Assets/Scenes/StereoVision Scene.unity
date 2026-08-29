@@ -936,7 +936,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 981713519}
-  - component: {fileID: 981713518}
   - component: {fileID: 981713520}
   m_Layer: 0
   m_Name: StereoVision
@@ -945,26 +944,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &981713518
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 981713517}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 49abdde4401427a4088c42e39858b193, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cam1: {fileID: 458856629}
-  cam2: {fileID: 1454529442}
-  host: 127.0.0.1
-  port: 12345
-  width: 1080
-  height: 720
-  vieportCAM1: {fileID: 592715106}
-  vieportCAM2: {fileID: 1000199228}
 --- !u!4 &981713519
 Transform:
   m_ObjectHideFlags: 0

@@ -1,5 +1,5 @@
 {
     "globalLogLevel": "Info",
-    "run_ros_tcp_endpoint_sh": "VisualSLAM/ros2/run_ros_tcp_endpoint.sh",
-    "run_stereo_processor_node_sh": "VisualSLAM/ros2/run_stereo_processor_node.sh"
+    "run_ros_tcp_endpoint_sh": "VisualSLAM/scripts/run_ros_tcp_endpoint.sh",
+    "run_stereo_processor_node_sh": "VisualSLAM/scripts/run_stereo_processor_node.sh"
 }

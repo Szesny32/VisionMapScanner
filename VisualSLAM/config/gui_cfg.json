@@ -1,0 +1,48 @@
+{
+    "layers": {
+        "Left Camera": {
+            "enabled": true,
+            "grid_span": 1,
+            "inputs": ["left"],
+            "params": {
+                "source_key": "left"
+            }
+        },
+        "Right Camera": {
+            "enabled": true,
+            "grid_span": 1,
+            "inputs": ["right"],
+            "params": {
+                "source_key": "right"
+            }
+        },
+        "StereoLayer": {
+            "enabled": true,
+            "grid_span": 1,
+            "inputs": ["left", "right", "f", "baseline"],
+            "params": {
+                "max_depth": 10.0,
+                "wls_lambda": 8000.0
+            }
+        },
+        "KeypointLayer": {
+            "enabled": false,
+            "grid_span": 2,
+            "inputs": ["left", "right"],
+            "params": {}
+        },
+        "OctreeLayer": {
+            "enabled": true,
+            "grid_span": 1,
+            "inputs": ["left", "f", "baseline"],
+            "params": {}
+        },
+        "OccupancyGridLayer": {
+            "enabled": true,
+            "grid_span": 2,
+            "params": {
+                "resolution": 0.05
+            }
+            }
+    }
+}

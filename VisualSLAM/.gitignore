@@ -2,3 +2,5 @@ venv/*
 *.pyc
 *.nbi
 *.nbc
+
+*.coverage

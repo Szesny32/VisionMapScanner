@@ -7,6 +7,8 @@ from layer.base_layer import BaseLayer
 class StereoLayer(BaseLayer):
     def __init__(self):
         super().__init__("Stereo & Depth")
+        self.outputs = ["depth_map"]
+        self.provides = {"depth_map": "depth_map"}
         self.min_disp = 0
         self.num_disp_multiplier = 8
         self.block_size = 5

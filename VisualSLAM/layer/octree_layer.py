@@ -59,6 +59,7 @@ def fast_render_zbuffer(canvas, z_buffer, u, v, z_depth, sizes, colors, h, w):
 class OctreeLayer(BaseLayer):
     def __init__(self):
         super().__init__("3D Point Cloud View")
+        self.inputs = ["depth_map", "left", "f", "baseline", "robot_pose"]
         self.max_depth = 12.0
         self.base_voxel_size = 0.03
         self.max_map_radius = 12.0
@@ -81,7 +82,7 @@ class OctreeLayer(BaseLayer):
         f = data.get('f', 500.0)
         baseline = data.get('baseline', 0.1)
         robot_pose = data.get('robot_pose', {'x': 0.0, 'y': 0.0, 'theta': 0.0})
-        depth_map = data.get('depth_map', None)
+        depth_map = data.get(self._input_key('depth_map'), None)
         color_img = data.get('left', None)
 
         if color_img is not None:

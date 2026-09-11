@@ -7,6 +7,8 @@ from layer.base_layer import BaseLayer
 class KeypointLayer(BaseLayer):
     def __init__(self):
         super().__init__("Keypoint Matching")
+        self.outputs = ["matches_visual"]
+        self.provides = {"matches_visual": "matches_visual"}
         self.nfeatures = 500
         self.max_draw_matches = 50
         self.orb = cv2.ORB_create(nfeatures=self.nfeatures)

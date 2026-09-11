@@ -16,12 +16,10 @@ from PySide6.QtWidgets import (
 from ros.ros_thread import ROSThread
 from gui.image_tile import ImageTile
 
-from layer.camera_layer import CameraLayer
-from layer.stereo_layer import StereoLayer
-from layer.keypoint_layer import KeypointLayer
-from layer.octree_layer import OctreeLayer
-from layer.occupancy_grid_layer import OccupancyGridLayer
-from constants import LAYERS_CONFIG, WINDOW_WIDTH, WINDOW_HEIGHT, LABEL_PAUSE, LABEL_LAYERS_SETTINGS
+from layer.pipeline import LayerGraph
+from utility.load_layers_from_json import load_layers_from_json
+from utility.config_io import update_layer_sources
+from constants import GUI_CONFIG_PATH, WINDOW_WIDTH, WINDOW_HEIGHT, LABEL_PAUSE, LABEL_LAYERS_SETTINGS
 
 
 class MainWindow(QMainWindow):
@@ -29,34 +27,15 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.ros_thread = ros_thread
         self.layers = self.ros_thread.layers
+        self.graph = self.ros_thread.graph
         self.tiles = {}
 
-        self._apply_config_to_layers()
         self.setWindowTitle("ROS2 PySide Pipeline Studio")
         self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
         self._init_ui()
         self.rebuild_grid()
         self.ros_thread.pipeline_signal.connect(self.update_viewports)
         self.ros_thread.start()
-
-    def _apply_config_to_layers(self):
-        for layer in self.layers:
-            cfg_key = None
-            if layer.name in LAYERS_CONFIG:
-                cfg_key = layer.name
-            elif layer.__class__.__name__ in LAYERS_CONFIG:
-                cfg_key = layer.__class__.__name__
-
-            if cfg_key:
-                cfg = LAYERS_CONFIG[cfg_key]
-                layer.enabled = cfg.get("enabled", getattr(layer, "enabled", True))
-                layer.grid_span = cfg.get("grid_span", getattr(layer, "grid_span", 1))
-                layer.inputs = cfg.get("inputs", getattr(layer, "inputs", []))
-                
-                params = cfg.get("params", {})
-                for k, v in params.items():
-                    if hasattr(layer, k):
-                        setattr(layer, k, v)
 
     def _init_ui(self):
         main_widget = QWidget()
@@ -99,7 +78,10 @@ class MainWindow(QMainWindow):
         container_right_layout = QVBoxLayout(container_right)
 
         for layer in self.layers:
-            control_widget = layer.create_control_widget(on_toggle_callback=self.rebuild_grid)
+            layer.settings_saver = self._save_sources
+            control_widget = layer.create_control_widget(
+                on_toggle_callback=self.rebuild_grid, graph=self.graph
+            )
             container_right_layout.addWidget(control_widget)
 
         container_right_layout.addStretch()
@@ -108,6 +90,9 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(right_group)
 
         return right_layout
+
+    def _save_sources(self, layer):
+        update_layer_sources(GUI_CONFIG_PATH, layer)
 
     @Slot(dict)
     def update_viewports(self, draw_results):
@@ -165,17 +150,10 @@ if __name__ == '__main__':
     rclpy.init(args=sys.argv)
     app = QApplication(sys.argv)
 
+    layers = load_layers_from_json(GUI_CONFIG_PATH)
+    graph = LayerGraph(layers)
 
-    layers = [
-        CameraLayer("Left Camera", "left"),
-        CameraLayer("Right Camera", "right"),
-        StereoLayer(),
-        KeypointLayer(),
-        OctreeLayer(),
-        OccupancyGridLayer(),
-    ]
-
-    ros_thread = ROSThread(layers=layers)
+    ros_thread = ROSThread(layers=layers, graph=graph)
 
     window = MainWindow(ros_thread)
     window.show()

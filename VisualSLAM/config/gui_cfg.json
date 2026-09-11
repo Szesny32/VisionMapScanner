@@ -1,48 +1,122 @@
 {
-    "layers": {
-        "Left Camera": {
+    "layers": [
+        {
+            "type": "CameraLayer",
+            "name": "Left Camera",
+            "args": [
+                "Left Camera",
+                "left"
+            ],
             "enabled": true,
             "grid_span": 1,
-            "inputs": ["left"],
-            "params": {
-                "source_key": "left"
-            }
+            "inputs": [
+                "left"
+            ],
+            "params": {}
         },
-        "Right Camera": {
+        {
+            "type": "CameraLayer",
+            "name": "Right Camera",
+            "args": [
+                "Right Camera",
+                "right"
+            ],
             "enabled": true,
             "grid_span": 1,
-            "inputs": ["right"],
-            "params": {
-                "source_key": "right"
-            }
+            "inputs": [
+                "right"
+            ],
+            "params": {}
         },
-        "StereoLayer": {
+        {
+            "type": "StereoLayer",
+            "name": "Stereo & Depth",
             "enabled": true,
             "grid_span": 1,
-            "inputs": ["left", "right", "f", "baseline"],
+            "inputs": [
+                "left",
+                "right",
+                "f",
+                "baseline"
+            ],
+            "outputs": [
+                "depth_map"
+            ],
             "params": {
                 "max_depth": 10.0,
                 "wls_lambda": 8000.0
             }
         },
-        "KeypointLayer": {
-            "enabled": false,
-            "grid_span": 2,
-            "inputs": ["left", "right"],
-            "params": {}
-        },
-        "OctreeLayer": {
+        {
+            "type": "GTDepthLayer",
+            "name": "GT Depth (Unity)",
             "enabled": true,
             "grid_span": 1,
-            "inputs": ["left", "f", "baseline"],
+            "inputs": [],
+            "outputs": [
+                "depth_map_gt"
+            ],
+            "provides": {
+                "depth_map": "depth_map_gt"
+            },
+            "params": {
+                "topic": "/stereo/camera_depth"
+            }
+        },
+        {
+            "type": "KeypointLayer",
+            "name": "Keypoint Matching",
+            "enabled": false,
+            "grid_span": 2,
+            "inputs": [
+                "left",
+                "right"
+            ],
+            "outputs": [
+                "matches_visual"
+            ],
+            "provides": {
+                "matches_visual": "matches_visual"
+            },
+            "params": {
+                "nfeatures": 500,
+                "max_draw_matches": 50
+            }
+        },
+        {
+            "type": "OctreeLayer",
+            "name": "3D Point Cloud View",
+            "enabled": true,
+            "grid_span": 1,
+            "inputs": [
+                "depth_map",
+                "left",
+                "f",
+                "baseline",
+                "robot_pose"
+            ],
+            "sources": {
+                "depth_map": "depth_map"
+            },
             "params": {}
         },
-        "OccupancyGridLayer": {
+        {
+            "type": "OccupancyGridLayer",
+            "name": "2D Occupancy Grid",
             "enabled": true,
             "grid_span": 2,
+            "inputs": [
+                "depth_map",
+                "f",
+                "baseline",
+                "robot_pose"
+            ],
+            "sources": {
+                "depth_map": "depth_map"
+            },
             "params": {
                 "resolution": 0.05
             }
-            }
-    }
+        }
+    ]
 }

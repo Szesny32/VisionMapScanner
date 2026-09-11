@@ -58,7 +58,8 @@ def update_grid_bresenham(grid, rx, ry, hits_x, hits_y, l_occ, l_free, min_l, ma
 class OccupancyGridLayer(BaseLayer):
     def __init__(self):
         super().__init__("2D Occupancy Grid")
-        
+        self.inputs = ["depth_map", "f", "baseline", "robot_pose"]
+
         self.resolution = 0.05
         self.map_size = 1000
         self.offset_x = self.map_size // 2
@@ -117,7 +118,7 @@ class OccupancyGridLayer(BaseLayer):
         f = data.get('f', 500.0)
         baseline = data.get('baseline', 0.1)
         robot_pose = data.get('robot_pose', {'x': 0.0, 'y': 0.0, 'theta': 0.0})
-        depth_map = data.get('depth_map', None)
+        depth_map = data.get(self._input_key('depth_map'), None)
 
         if depth_map is None:
             return

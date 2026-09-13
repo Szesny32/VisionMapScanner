@@ -17,14 +17,12 @@ public class DepthCamera: MonoBehaviour
     private Camera depthCamera;                
     public RawImage viewport;
     private Texture2D depthMap;
-
     private Transform cameraTransform;
-
     private RenderTexture depthMapRT;
     public bool saveToFile = false;
-
-
     private CameraCalibration cameraCalibration;
+    
+    private Material depthMaterial;
 
     void Start()
     {
@@ -37,17 +35,34 @@ public class DepthCamera: MonoBehaviour
         depthCamera.targetTexture = new RenderTexture(width, height, 24, RenderTextureFormat.Depth);
         depthCamera.depthTextureMode = DepthTextureMode.Depth;
 
-        depthMapRT = new RenderTexture(width, height, 24, RenderTextureFormat.RFloat);
-        depthMap = new Texture2D(width, height, TextureFormat.RFloat, false);
+        depthMapRT = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
+        depthMap = new Texture2D(width, height, TextureFormat.RGB24, false);
+
+        Shader depthShader = Shader.Find("Hidden/DepthToGrayscale");
+        if(depthShader != null)
+        {
+            depthMaterial = new Material(depthShader);
+            depthMaterial.SetFloat("_MaxDistance", 15f); 
+        }
+        else
+        {
+            Debug.LogError("Nie znaleziono shadera 'Hidden/DepthToGrayscale'!");
+        }
 
         Calibration();
     }
 
-    //TODO: OnRequest?
     void Update() => RenderDepthMap();
 
     void RenderDepthMap(){
-        Graphics.Blit(depthCamera.targetTexture , depthMapRT);
+        if(depthMaterial != null)
+        {
+            Graphics.Blit(depthCamera.targetTexture, depthMapRT, depthMaterial);
+        }
+        else
+        {
+            Graphics.Blit(depthCamera.targetTexture, depthMapRT);
+        }
 
         RenderTexture.active = depthMapRT;
         depthMap.ReadPixels(new Rect(0, 0, cameraCalibration.width, cameraCalibration.height), 0, 0);
@@ -64,6 +79,7 @@ public class DepthCamera: MonoBehaviour
         byte[] bytes = depthMap.EncodeToPNG();
         string filePath = "DepthMap.png";
         File.WriteAllBytes(filePath, bytes);
+        Debug.Log("Zapisano DepthMap.png"); 
     }
 
     public byte[] RetrieveData(ref Transform cameraTransform){
@@ -101,5 +117,4 @@ public class DepthCamera: MonoBehaviour
     public CameraCalibration GetCalibrationData(){
         return cameraCalibration;
     }
-
 }

@@ -112,12 +112,12 @@ class StereoProcessorNode(Node):
             depth_map = (self.focal_length * self.baseline) / disparity_float
             depth_map[disparity_float <= 0.0] = 0
 
-        min_depth = 0.1   
-        max_depth = 10.0  
+        min_depth = 0.1
+        max_depth = 10.0
 
         invalid_mask = (depth_map <= 0.0) | (depth_map > max_depth)
         depth_clipped = np.clip(depth_map, min_depth, max_depth)
-        
+
         depth_visual = (255.0 * (1.0 - (depth_clipped - min_depth) / (max_depth - min_depth))).astype(np.uint8)
         depth_visual[invalid_mask] = 0
 

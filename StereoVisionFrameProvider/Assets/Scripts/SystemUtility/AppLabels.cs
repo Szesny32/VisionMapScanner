@@ -6,12 +6,15 @@ public static class AppLabels {
     public const string CLOSED_ALL_PROCESSES = "Closed all .sh script processes along with their children.";
     public const string CONFIG_LOADED = "Loaded configuration from project directory: {0}";
     public const string CONFIG_CREATED = "Created default configuration file in project directory: {0}";
+    public const string DEPTH_CLIP_APPLIED = "Applied clipping planes to GT depth camera: near {0:F3} m, far {1:F3} m";
+    public const string DEPTH_PUBLISHER_STARTED = "GT depth publisher registered on topic: {0}";
 
     // WARN
     public const string CAMERA_NOT_ASSIGNED = "One of the cameras is not assigned! Using default baseline.";
     
     // ERROR
     public const string MISSING_ROS_SCRIPTS_PATH = "Path to ROS scripts are empty!";
+    public const string DEPTH_SHADER_NOT_FOUND = "Shader 'Hidden/DepthToLinearEye' not found!";
     public const string MISSING_SCRIPT_PATH = "Script file does not exist: {0}";
     public const string INIT_PROCESS_FAILED = "Error while starting process: {0}";
     public const string KILL_PROCESS_ERROR = "Error while closing process: {0}";

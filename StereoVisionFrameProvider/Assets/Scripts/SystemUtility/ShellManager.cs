@@ -20,6 +20,7 @@ public class ShellManager
 
     private ShellManager() { 
         logger = new Logger(GetType().Name);
+        UnityEngine.Application.quitting += CloseAllProcesses;
     }
 
     public Process Execute(string scriptPath) {
@@ -37,6 +38,8 @@ public class ShellManager
             CreateNoWindow = true
         };
 
+        startInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
+
         try {
             Process process = Process.Start(startInfo);
             if (process != null) {
@@ -45,6 +48,23 @@ public class ShellManager
                 }
 
                 process.EnableRaisingEvents = true;
+
+                // NOWE: Przechwytywanie logów z Pythona i wysyłanie ich do Unity
+                process.OutputDataReceived += (sender, args) => {
+                    if (!string.IsNullOrEmpty(args.Data)) {
+                        UnityEngine.Debug.Log($"[Python] {args.Data}");
+                    }
+                };
+                process.ErrorDataReceived += (sender, args) => {
+                    if (!string.IsNullOrEmpty(args.Data)) {
+                        UnityEngine.Debug.LogError($"[Python ERROR] {args.Data}");
+                    }
+                };
+                
+                // Uruchomienie asynchronicznego czytania
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
                 process.Exited += (sender, e) => {
                     lock (activeProcesses) {
                         activeProcesses.Remove(process);

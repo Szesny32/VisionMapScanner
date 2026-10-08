@@ -12,4 +12,4 @@ export PYTHONPATH="$ROOT_DIR"
 source /opt/ros/jazzy/setup.bash
 source ~/ros2_ws/install/setup.bash
 
-python3 "$VSLAM_DIR/main.py"
+python3 -u "$VSLAM_DIR/main.py"

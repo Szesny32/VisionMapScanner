@@ -1,5 +1,7 @@
 {
     "globalLogLevel": "Info",
     "run_ros_tcp_endpoint_sh": "VisualSLAM/scripts/run_ros_tcp_endpoint.sh",
-    "run_stereo_processor_node_sh": "VisualSLAM/scripts/run_stereo_processor_node.sh"
+    "run_stereo_processor_node_sh": "VisualSLAM/scripts/run_stereo_processor_node.sh",
+    "camera_near": 0.1,
+    "depth_far": 10.0
 }

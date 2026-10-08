@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System;
+using Unity.Collections;
 using Unity.Robotics.ROSTCPConnector;
 using RosMessageTypes.Sensor;
 using RosMessageTypes.Std;
@@ -22,6 +23,7 @@ public class StereovisionCaptureROS2 : MonoBehaviour
     [SerializeField] private string topicInfoLeft = "/stereo/left/camera_info";
     [SerializeField] private string topicInfoRight = "/stereo/right/camera_info";
     [SerializeField] private string topicRobotPose = "/robot/pose";
+    [SerializeField] private string topicNameDepth = "/stereo/camera_depth";
 
     [Header("Image Settings")]
     [SerializeField] private int width = 1080;
@@ -40,6 +42,12 @@ public class StereovisionCaptureROS2 : MonoBehaviour
     private Texture2D textureCAM1;
     private Texture2D textureCAM2;
 
+    private Camera gtDepthCamera;
+    private RenderTexture depthRT;
+    private RenderTexture depthFloatRT;
+    private Texture2D depthTexture;
+    private Material depthMaterial;
+
 
     private System.Diagnostics.Process rosTcpEndpointProcess;
     private System.Diagnostics.Process stereoProcessorNodeProcess;
@@ -57,6 +65,7 @@ public class StereovisionCaptureROS2 : MonoBehaviour
         
         ros.RegisterPublisher<ImageMsg>(topicNameLeft);
         ros.RegisterPublisher<ImageMsg>(topicNameRight);
+        ros.RegisterPublisher<ImageMsg>(topicNameDepth);
         ros.RegisterPublisher<CameraInfoMsg>(topicInfoLeft);
         ros.RegisterPublisher<CameraInfoMsg>(topicInfoRight);
         ros.RegisterPublisher<PoseStampedMsg>(topicRobotPose);
@@ -66,6 +75,8 @@ public class StereovisionCaptureROS2 : MonoBehaviour
 
         textureCAM1 = new Texture2D(width, height, TextureFormat.RGB24, false);
         textureCAM2 = new Texture2D(width, height, TextureFormat.RGB24, false);
+
+        SetupGTDepthCamera();
 
         if (vieportCAM1 != null) vieportCAM1.texture = textureCAM1;
         if (vieportCAM2 != null) vieportCAM2.texture = textureCAM2;
@@ -96,6 +107,7 @@ public class StereovisionCaptureROS2 : MonoBehaviour
     void Update() {
         TimeMsg sharedTimestamp = GetCurrentROSTime();
         SendStereoVisionFrames(sharedTimestamp);
+        PublishDepthFrame(sharedTimestamp);
         PublishCameraInfoAndRobotPose(sharedTimestamp);
     }
 
@@ -138,6 +150,72 @@ public class StereovisionCaptureROS2 : MonoBehaviour
         };
 
         ros.Publish(topic, imgMessage);
+    }
+
+    void SetupGTDepthCamera() {
+        if (cam1 == null) return;
+
+        GameObject go = new GameObject("GTDepthCamera");
+        go.transform.SetParent(cam1.transform, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+
+        gtDepthCamera = go.AddComponent<Camera>();
+        gtDepthCamera.enabled = false;
+        gtDepthCamera.fieldOfView = cam1.fieldOfView;
+        gtDepthCamera.aspect = (float)width / height;
+        gtDepthCamera.cullingMask = cam1.cullingMask;
+        gtDepthCamera.nearClipPlane = Config.Instance.CameraNear;
+        gtDepthCamera.farClipPlane = Config.Instance.DepthFar;
+        gtDepthCamera.depthTextureMode = DepthTextureMode.Depth;
+
+        depthRT = new RenderTexture(width, height, 24, RenderTextureFormat.Depth);
+        depthFloatRT = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat);
+        depthTexture = new Texture2D(width, height, TextureFormat.RFloat, false);
+
+        Shader depthShader = Shader.Find("Hidden/DepthToLinearEye");
+        if (depthShader != null) {
+            depthMaterial = new Material(depthShader);
+        } else {
+            logger.Error(AppLabels.DEPTH_SHADER_NOT_FOUND);
+        }
+
+        logger.Log(string.Format(AppLabels.DEPTH_PUBLISHER_STARTED, topicNameDepth));
+        logger.Log(string.Format(AppLabels.DEPTH_CLIP_APPLIED, Config.Instance.CameraNear, Config.Instance.DepthFar));
+    }
+
+    void PublishDepthFrame(TimeMsg timestamp) {
+        if (gtDepthCamera == null || depthRT == null || depthFloatRT == null || depthMaterial == null) return;
+
+        gtDepthCamera.targetTexture = depthRT;
+        gtDepthCamera.Render();
+        gtDepthCamera.targetTexture = null;
+        RenderTexture.active = null;
+
+        Graphics.Blit(depthRT, depthFloatRT, depthMaterial);
+        RenderTexture.active = depthFloatRT;
+        depthTexture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        depthTexture.Apply();
+        RenderTexture.active = null;
+
+        float[] depthData = depthTexture.GetRawTextureData<float>().ToArray();
+        byte[] depthBytes = new byte[depthData.Length * sizeof(float)];
+        Buffer.BlockCopy(depthData, 0, depthBytes, 0, depthBytes.Length);
+
+        ImageMsg depthMessage = new ImageMsg {
+            header = new HeaderMsg {
+                stamp = timestamp,
+                frame_id = "camera_left_optical_frame"
+            },
+            height = (uint)height,
+            width = (uint)width,
+            encoding = "32FC1",
+            is_bigendian = 0,
+            step = (uint)(width * 4),
+            data = depthBytes
+        };
+
+        ros.Publish(topicNameDepth, depthMessage);
     }
 
     void PublishCameraInfoAndRobotPose(TimeMsg timestamp) {
@@ -207,5 +285,10 @@ public class StereovisionCaptureROS2 : MonoBehaviour
         if (renderTextureCam2 != null) { renderTextureCam2.Release(); Destroy(renderTextureCam2); }
         if (textureCAM1 != null) Destroy(textureCAM1);
         if (textureCAM2 != null) Destroy(textureCAM2);
+        if (depthRT != null) { depthRT.Release(); Destroy(depthRT); }
+        if (depthFloatRT != null) { depthFloatRT.Release(); Destroy(depthFloatRT); }
+        if (depthTexture != null) Destroy(depthTexture);
+        if (depthMaterial != null) Destroy(depthMaterial);
+        if (gtDepthCamera != null) Destroy(gtDepthCamera.gameObject);
     }
 }

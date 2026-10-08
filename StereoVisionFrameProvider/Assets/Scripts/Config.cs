@@ -16,6 +16,8 @@ public class Config {
     public string globalLogLevel = "Info";
     public string run_ros_tcp_endpoint_sh = "";
     public string run_stereo_processor_node_sh = "";
+    public float camera_near = 0.1f;
+    public float depth_far = 10.0f;
 
     [NonSerialized]
     private string global_run_ros_tcp_endpoint_sh = "";
@@ -24,6 +26,8 @@ public class Config {
 
     public string RunRosTcpEndpointSh => global_run_ros_tcp_endpoint_sh;
     public string RunStereoProcessorNodeSh => global_run_stereo_processor_node_sh;
+    public float CameraNear => camera_near;
+    public float DepthFar => depth_far;
 
     private static string GetConfigPath() {
         return FileManager.GetFullPath("config.json");

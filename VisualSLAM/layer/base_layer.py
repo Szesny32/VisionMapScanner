@@ -1,5 +1,16 @@
+import numpy as np
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QComboBox, QLabel
 from PySide6.QtCore import Qt
+
+
+def depth_to_visual(depth, min_depth, max_depth):
+    d = np.asarray(depth, dtype=np.float32)
+    invalid = (d <= 0.0) | (d > max_depth)
+    d_clipped = np.clip(d, min_depth, max_depth)
+    visual = 255.0 * (1.0 - (d_clipped - min_depth) / (max_depth - min_depth))
+    visual[invalid] = 0.0
+    return np.clip(visual, 0.0, 255.0).astype(np.uint8)
+
 
 class BaseLayer:
     def __init__(self, name=None, enabled=True, grid_span=1, inputs=None, max_cache_frames=5):

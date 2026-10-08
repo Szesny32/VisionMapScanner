@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from PySide6.QtWidgets import QLabel, QSlider
 from PySide6.QtCore import Qt
-from layer.base_layer import BaseLayer
+from layer.base_layer import BaseLayer, depth_to_visual
 
 class StereoLayer(BaseLayer):
     def __init__(self):
@@ -14,6 +14,7 @@ class StereoLayer(BaseLayer):
         self.block_size = 5
         self.wls_lambda = 8000.0
         self.wls_sigma = 1.5
+        self.min_depth = 0.1
         self.max_depth = 10.0
         self.rebuild_matchers()
 
@@ -101,6 +102,7 @@ class StereoLayer(BaseLayer):
         self.wls_filter.setSigmaColor(self.wls_sigma)
 
     def process(self, data):
+        
         left, right, f, b = data.get('left'), data.get('right'), data.get('f'), data.get('baseline')
         
         if left is None or right is None or f is None or b is None:
@@ -119,18 +121,11 @@ class StereoLayer(BaseLayer):
         with np.errstate(divide='ignore', invalid='ignore'):
             depth_map = (f * b) / disparity_float
             depth_map[disparity_float <= 0.0] = 0
+        print(f"[CALC] f={f}; b={b}; min={np.min(depth_map)}; max={np.max(depth_map)}")
+        data['depth_map'] = np.clip(depth_map, self.min_depth, self.max_depth)
 
-        min_depth = 0.1
-        invalid_mask = (depth_map <= 0.0) | (depth_map > self.max_depth)
-        depth_clipped = np.clip(depth_map, min_depth, self.max_depth)
-        
-        data['depth_map'] = depth_clipped
-        
-        depth_visual = (255.0 * (1.0 - (depth_clipped - min_depth) / (self.max_depth - min_depth))).astype(np.float32)
-        depth_visual[invalid_mask] = 0
-        
-        depth_visual_uint8 = np.clip(depth_visual, 0, 255).astype(np.uint8)
-        self.context['depth_visual'] = cv2.cvtColor(depth_visual_uint8, cv2.COLOR_GRAY2BGR)
+        depth_visual = depth_to_visual(depth_map, self.min_depth, self.max_depth)
+        self.context['depth_visual'] = cv2.cvtColor(depth_visual, cv2.COLOR_GRAY2BGR)
 
     def draw(self, data):
         return self.context.get('depth_visual', None)

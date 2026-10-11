@@ -4,6 +4,9 @@ from PySide6.QtCore import Qt
 
 
 def depth_to_visual(depth, min_depth, max_depth):
+    if depth is None or max_depth <= min_depth:
+        shape = (0, 0) if depth is None else np.asarray(depth).shape[:2]
+        return np.zeros(shape, dtype=np.uint8)
     d = np.asarray(depth, dtype=np.float32)
     invalid = (d <= 0.0) | (d > max_depth)
     d_clipped = np.clip(d, min_depth, max_depth)
@@ -24,6 +27,7 @@ class BaseLayer:
         self.resolved_inputs = {}
         self.skip_if_present = False
         self.settings_saver = None
+        self.config_changed_callback = None
         self.context = {}
         self.max_cache_frames = max_cache_frames
         self._cache = {}
@@ -48,6 +52,7 @@ class BaseLayer:
             self.enabled = (state == Qt.Checked.value or state == 2)
             if on_toggle_callback:
                 on_toggle_callback()
+            self.notify_config_changed()
 
         chk.stateChanged.connect(_on_state_changed)
         layout.addWidget(chk)
@@ -79,13 +84,14 @@ class BaseLayer:
                     selected_index = i
             combo.setCurrentIndex(selected_index)
 
-            def _on_source_change(index, k=inp):
-                out_key = combo.itemData(index)
+            def _on_source_change(index, k=inp, source_combo=combo):
+                out_key = source_combo.itemData(index)
                 if out_key is None:
                     return
                 self.source_bindings[k] = out_key
                 if self.settings_saver:
                     self.settings_saver(self)
+                self.notify_config_changed()
 
             combo.currentIndexChanged.connect(_on_source_change)
             row.addWidget(combo, 1)
@@ -93,6 +99,10 @@ class BaseLayer:
 
     def _build_custom_controls(self, layout: QVBoxLayout):
         pass
+
+    def notify_config_changed(self):
+        if self.config_changed_callback is not None:
+            self.config_changed_callback()
 
     def _check_cache(self, frame_id, output_key):
         if frame_id is not None and frame_id in self._cache:

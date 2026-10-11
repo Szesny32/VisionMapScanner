@@ -57,7 +57,11 @@ public class ShellManager
                 };
                 process.ErrorDataReceived += (sender, args) => {
                     if (!string.IsNullOrEmpty(args.Data)) {
-                        UnityEngine.Debug.LogError($"[Python ERROR] {args.Data}");
+                        if (IsKnownPythonWarning(args.Data)) {
+                            UnityEngine.Debug.LogWarning($"[Python WARNING] {args.Data}");
+                        } else {
+                            UnityEngine.Debug.LogError($"[Python ERROR] {args.Data}");
+                        }
                     }
                 };
                 
@@ -79,6 +83,12 @@ public class ShellManager
             logger.Error(AppLabels.INIT_PROCESS_FAILED + e.Message);
         }
         return null;
+    }
+
+    private static bool IsKnownPythonWarning(string message) {
+        return message.Contains("UserWarning: MultiThreadedExecutor is used with a single thread")
+            || message.Contains("Use the SingleThreadedExecutor instead.")
+            || message.Trim() == "warnings.warn(";
     }
 
     public void CloseProcess(Process process) {

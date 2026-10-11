@@ -1,96 +1,85 @@
 import cv2
 import numpy as np
-from PySide6.QtWidgets import QLabel, QSlider
-from PySide6.QtCore import Qt
 from layer.base_layer import BaseLayer, depth_to_visual
+from layer.depth_config import StereoDepthConfig
+from layer.depth_provider import DepthProvider
 
-class GTDepthLayer(BaseLayer):
-    def __init__(self):
+class GTDepthLayer(BaseLayer, DepthProvider):
+    def __init__(self, depth_config=None):
         super().__init__("GT Depth (Unity)")
+        self.depth_config = depth_config or StereoDepthConfig()
         self.outputs = ["depth_map_gt"]
         self.provides = {"depth_map": "depth_map_gt"}
         self.topic = "/stereo/camera_depth"
-        self.min_depth = 0.1
-        self.max_depth = 10.0
-        self.num_disp_multiplier = 8
 
-    def _build_custom_controls(self, layout):
-        lbl_min = QLabel(f"Min Depth (m): {self.min_depth:.2f}")
-        slider_min = QSlider(Qt.Horizontal)
-        slider_min.setRange(1, 50)
-        slider_min.setValue(int(self.min_depth * 100))
+    @property
+    def min_depth(self):
+        return self.depth_config.min_depth
 
-        def on_min_change(val):
-            self.min_depth = val / 100.0
-            lbl_min.setText(f"Min Depth (m): {self.min_depth:.2f}")
+    @min_depth.setter
+    def min_depth(self, value):
+        self.depth_config.min_depth = float(value)
 
-        slider_min.valueChanged.connect(on_min_change)
+    @property
+    def max_depth(self):
+        return self.depth_config.max_depth
 
-        lbl_max = QLabel(f"Max Depth (m): {self.max_depth:.1f}")
-        slider_max = QSlider(Qt.Horizontal)
-        slider_max.setRange(1, 30)
-        slider_max.setValue(int(self.max_depth))
-
-        def on_max_change(val):
-            self.max_depth = float(val)
-            lbl_max.setText(f"Max Depth (m): {self.max_depth:.1f}")
-
-        slider_max.valueChanged.connect(on_max_change)
-
-        layout.addWidget(lbl_min)
-        layout.addWidget(slider_min)
-        layout.addWidget(lbl_max)
-        layout.addWidget(slider_max)
+    @max_depth.setter
+    def max_depth(self, value):
+        self.depth_config.max_depth = float(value)
 
     def process(self, data):
-        depth = data.get("depth_map_gt", None)
-        f = data.get("f", None)
-        b = data.get("baseline", None)
+        depth = self.normalize_depth_map(data.get("depth_map_gt"))
+        f = data.get("f")
+        b = data.get("baseline")
 
         if depth is None:
             self.context["gt_depth_visual"] = None
             data["depth_map_gt"] = None
             return
 
-        depth_proc = depth.copy()
+        left_image = data.get("left")
+        if left_image is not None:
+            try:
+                expected_shape = np.asarray(left_image).shape[:2]
+            except (TypeError, ValueError):
+                expected_shape = None
+            if expected_shape is not None and len(expected_shape) == 2 and depth.shape != expected_shape:
+                self.context["gt_depth_visual"] = None
+                data["depth_map_gt"] = None
+                return
+
+        depth_proc = depth.copy().astype(np.float32, copy=False)
+        depth_proc[~np.isfinite(depth_proc)] = 0.0
         h, w = depth_proc.shape
 
-        # 1. Pobranie parametru num_disparities ze StereoLayer (domyślnie 128 px)
-        num_disp = 16 * data.get("num_disp_multiplier", self.num_disp_multiplier)
+        # The stereo overlap mask is meaningful only with complete camera metadata.
+        try:
+            focal_length = float(f)
+            baseline = float(b)
+            has_camera_calibration = (
+                np.isfinite(focal_length) and np.isfinite(baseline)
+                and focal_length > 0 and baseline > 0
+            )
+        except (TypeError, ValueError):
+            has_camera_calibration = False
 
-        # 2. Siatka współrzędnych X
-        x_grid = np.tile(np.arange(w), (h, 1))
-
-        # 3. Maska 1: Sztywny margines SGBM (lewa krawędź nieobliczalna przez algorytm)
-        invalid_mask = x_grid < num_disp
-
-        # 4. Maska 2: Fizyczny brak pokrycia polami widzenia (paralaksa)
-        if f is not None and b is not None:
+        if has_camera_calibration:
+            x_grid = np.broadcast_to(np.arange(w), (h, w))
+            num_disp = max(
+                0,
+                16 * self.depth_config.num_disp_multiplier + self.depth_config.min_disp,
+            )
+            invalid_mask = x_grid < num_disp
             with np.errstate(divide='ignore', invalid='ignore'):
-                disparity_gt = np.where(depth_proc > 0, (f * b) / depth_proc, 0)
+                disparity_gt = np.where(depth_proc > 0, (focal_length * baseline) / depth_proc, 0)
             invalid_mask |= (x_grid < disparity_gt)
+            depth_proc[invalid_mask] = 0.0
 
-        # Wyzerowanie pikseli poza zakresem wspólnym
-        depth_proc[invalid_mask] = 0.0
-
-        # 5. Przycięcie wartości głębi do [min_depth, max_depth]
-        # 5. Przycięcie wartości głębi do [min_depth, max_depth]
         valid_mask = depth_proc > 0
-        
-        # Zabezpieczenie przed pustą tablicą (gdy brak poprawnych pikseli)
-        if np.any(valid_mask):
-            gt_min = np.min(depth_proc[valid_mask])
-            gt_max = np.max(depth_proc[valid_mask])
-        else:
-            gt_min, gt_max = 0.0, 0.0
-            
-        print(f"[GT] f={f}; b={b}; min={gt_min:.2f}; max={gt_max:.2f}")
-        
         depth_proc[valid_mask] = np.clip(depth_proc[valid_mask], self.min_depth, self.max_depth)
+        data["depth_map_gt"] = np.asarray(depth_proc, dtype=np.float32)
 
-        data["depth_map_gt"] = depth_proc
-
-        # 6. Wizualizacja
         depth_visual = depth_to_visual(depth_proc, self.min_depth, self.max_depth)
         self.context["gt_depth_visual"] = cv2.cvtColor(depth_visual, cv2.COLOR_GRAY2BGR)
 

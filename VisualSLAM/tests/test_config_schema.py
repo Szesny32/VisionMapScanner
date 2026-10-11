@@ -22,6 +22,23 @@ def test_loads_all_layers_from_config():
     }
 
 
+def test_live_gt_preview_is_ordered_next_to_stereo_camera_previews():
+    layers = load_layers_from_json(GUI_CONFIG_PATH)
+
+    assert [layer.name for layer in layers[:3]] == [
+        "Left Camera",
+        "Right Camera",
+        "GT Depth (Unity)",
+    ]
+
+
+def test_stereo_regularization_scale_is_loaded_from_python_config():
+    layers = load_layers_from_json(GUI_CONFIG_PATH)
+    stereo = next(layer for layer in layers if layer.name == "Stereo & Depth")
+
+    assert stereo.p2_scale == 1.2
+
+
 def test_octree_defaults_to_algorithm_depth():
     layers = load_layers_from_json(GUI_CONFIG_PATH)
     graph = LayerGraph(layers)

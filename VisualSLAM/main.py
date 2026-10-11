@@ -11,6 +11,9 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QPushButton,
     QGroupBox,
+    QFormLayout,
+    QSpinBox,
+    QDoubleSpinBox,
 )
 
 from ros.ros_thread import ROSThread
@@ -19,7 +22,19 @@ from gui.image_tile import ImageTile
 from layer.pipeline import LayerGraph
 from utility.load_layers_from_json import load_layers_from_json
 from utility.config_io import update_layer_sources
-from constants import GUI_CONFIG_PATH, WINDOW_WIDTH, WINDOW_HEIGHT, LABEL_PAUSE, LABEL_LAYERS_SETTINGS
+from utility.depth_selection import gt_depth_stream_requested
+from constants import (
+    GUI_CONFIG_PATH,
+    WINDOW_WIDTH,
+    WINDOW_HEIGHT,
+    PREVIEW_GRID_COLUMNS,
+)
+from labels import (
+    LABEL_PAUSE,
+    LABEL_RESUME,
+    LABEL_LAYERS_SETTINGS,
+    LABEL_STEREO_CONFIGURATION,
+)
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +50,7 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self.rebuild_grid()
         self.ros_thread.pipeline_signal.connect(self.update_viewports)
+        self.ros_thread.set_runtime_configuration(self._gt_depth_is_requested())
         self.ros_thread.start()
 
     def _init_ui(self):
@@ -76,9 +92,11 @@ class MainWindow(QMainWindow):
         scroll_right.setWidgetResizable(True)
         container_right = QWidget()
         container_right_layout = QVBoxLayout(container_right)
+        container_right_layout.addWidget(self._create_stereo_config_controls())
 
         for layer in self.layers:
             layer.settings_saver = self._save_sources
+            layer.config_changed_callback = self._refresh_runtime_configuration
             control_widget = layer.create_control_widget(
                 on_toggle_callback=self.rebuild_grid, graph=self.graph
             )
@@ -90,6 +108,74 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(right_group)
 
         return right_layout
+
+    def _create_stereo_config_controls(self):
+        config = self.ros_thread.depth_config
+        group = QGroupBox(LABEL_STEREO_CONFIGURATION)
+        form = QFormLayout(group)
+
+        self.min_depth_control = QDoubleSpinBox()
+        self.min_depth_control.setRange(0.01, 100.0)
+        self.min_depth_control.setDecimals(2)
+        self.min_depth_control.setSingleStep(0.05)
+        self.min_depth_control.setValue(config.min_depth)
+
+        self.max_depth_control = QDoubleSpinBox()
+        self.max_depth_control.setRange(0.02, 1000.0)
+        self.max_depth_control.setDecimals(2)
+        self.max_depth_control.setSingleStep(0.5)
+        self.max_depth_control.setValue(config.max_depth)
+
+        self.width_control = QSpinBox()
+        self.width_control.setRange(16, 4096)
+        self.width_control.setSingleStep(16)
+        self.width_control.setValue(config.width)
+
+        self.height_control = QSpinBox()
+        self.height_control.setRange(16, 2160)
+        self.height_control.setSingleStep(16)
+        self.height_control.setValue(config.height)
+
+        self.baseline_control = QDoubleSpinBox()
+        self.baseline_control.setRange(0.01, 5.0)
+        self.baseline_control.setDecimals(3)
+        self.baseline_control.setSingleStep(0.01)
+        self.baseline_control.setValue(config.baseline)
+
+        form.addRow("Minimum depth (m)", self.min_depth_control)
+        form.addRow("Maximum depth (m)", self.max_depth_control)
+        form.addRow("Width (px)", self.width_control)
+        form.addRow("Height (px)", self.height_control)
+        form.addRow("Camera baseline (m)", self.baseline_control)
+        for control in (
+            self.min_depth_control,
+            self.max_depth_control,
+            self.width_control,
+            self.height_control,
+            self.baseline_control,
+        ):
+            control.valueChanged.connect(self._refresh_runtime_configuration)
+        return group
+
+    def _refresh_runtime_configuration(self, *_args):
+        changed_control = self.sender()
+        if changed_control is self.min_depth_control and self.min_depth_control.value() >= self.max_depth_control.value():
+            self.max_depth_control.setValue(self.min_depth_control.value() + 0.01)
+        elif changed_control is self.max_depth_control and self.max_depth_control.value() <= self.min_depth_control.value():
+            self.min_depth_control.setValue(max(0.01, self.max_depth_control.value() - 0.01))
+        config = self.ros_thread.depth_config
+        config.min_depth = self.min_depth_control.value()
+        config.max_depth = self.max_depth_control.value()
+        config.width = self.width_control.value()
+        config.height = self.height_control.value()
+        config.baseline = self.baseline_control.value()
+        self.ros_thread.set_runtime_configuration(self._gt_depth_is_requested())
+
+    def _gt_depth_is_requested(self):
+        # The GT layer's own preview consumes depth frames even if downstream
+        # layers currently use OpenCV output. Its enabled state is therefore
+        # also a request to stream GT data from Unity.
+        return gt_depth_stream_requested(self.layers)
 
     def _save_sources(self, layer):
         update_layer_sources(GUI_CONFIG_PATH, layer)
@@ -126,13 +212,13 @@ class MainWindow(QMainWindow):
             else:
                 self.grid_layout.addWidget(tile, row, col)
                 col += 1
-                if col > 1:
+                if col >= PREVIEW_GRID_COLUMNS:
                     col = 0
                     row += 1
 
     def toggle_pipeline(self):
         self.ros_thread.is_paused = self.btn_toggle.isChecked()
-        self.btn_toggle.setText("Wznów" if self.ros_thread.is_paused else "Pauza")
+        self.btn_toggle.setText(LABEL_RESUME if self.ros_thread.is_paused else LABEL_PAUSE)
 
     def closeEvent(self, event):
         if hasattr(self, 'ros_thread') and self.ros_thread.isRunning():

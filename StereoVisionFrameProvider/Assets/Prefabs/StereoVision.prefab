@@ -54,6 +54,11 @@ MonoBehaviour:
   topicInfoLeft: /stereo/left/camera_info
   topicInfoRight: /stereo/right/camera_info
   topicRobotPose: /robot/pose
+  topicNameDepth: /stereo/camera_depth
+  topicRuntimeConfig: /stereo/config
+  topicConfigReady: /stereo/config_ready
+  topicConfigReadyAck: /stereo/config_ready_ack
+  topicConfigAck: /stereo/config_ack
   width: 1080
   height: 720
   jpegQuality: 100

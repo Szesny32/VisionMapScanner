@@ -1,10 +1,12 @@
 import json
 from layer.registry import LAYER_REGISTRY
+from layer.depth_config import StereoDepthConfig
 
 def load_layers_from_json(filepath):
     with open(filepath, 'r') as f:
         config = json.load(f)
 
+    depth_config = StereoDepthConfig(**config.get("stereo_config", {}))
     layers = []
     for item in config.get("layers", []):
         layer_type = item.get("type")
@@ -12,7 +14,10 @@ def load_layers_from_json(filepath):
             continue
 
         cls = LAYER_REGISTRY[layer_type]
-        layer = cls(*item.get("args", []))
+        if layer_type in ("StereoLayer", "GTDepthLayer"):
+            layer = cls(depth_config=depth_config)
+        else:
+            layer = cls(*item.get("args", []))
 
         layer.name = item.get("name", layer.name)
         layer.enabled = item.get("enabled", layer.enabled)
